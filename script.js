@@ -14,11 +14,38 @@ document.addEventListener('DOMContentLoaded', function() {
         document.head.appendChild(html2canvasScript);
     }
     
-    if (typeof window.jspdf === 'undefined' && typeof window.jsPDF === 'undefined') {
+    if (typeof window.jspdf === 'undefined') {
         console.error('jsPDF não está carregado. Adicionando script...');
         const jspdfScript = document.createElement('script');
         jspdfScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
         document.head.appendChild(jspdfScript);
+    }
+    
+    // Adicionar notificação de status para o usuário
+    const statusNotification = document.createElement('div');
+    statusNotification.id = 'statusNotification';
+    statusNotification.style.display = 'none';
+    statusNotification.style.position = 'fixed';
+    statusNotification.style.bottom = '20px';
+    statusNotification.style.right = '20px';
+    statusNotification.style.padding = '15px 20px';
+    statusNotification.style.backgroundColor = '#4CAF50';
+    statusNotification.style.color = 'white';
+    statusNotification.style.borderRadius = '5px';
+    statusNotification.style.zIndex = '1000';
+    statusNotification.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
+    document.body.appendChild(statusNotification);
+    
+    // Função para mostrar notificações ao usuário
+    function showNotification(message, isSuccess = true) {
+        statusNotification.textContent = message;
+        statusNotification.style.backgroundColor = isSuccess ? '#4CAF50' : '#f44336';
+        statusNotification.style.display = 'block';
+        
+        // Esconder a notificação após 5 segundos
+        setTimeout(() => {
+            statusNotification.style.display = 'none';
+        }, 5000);
     }
     
     // Inicializar os pads de assinatura após garantir que a biblioteca está carregada
@@ -29,13 +56,33 @@ document.addEventListener('DOMContentLoaded', function() {
         const clientBox = document.getElementById('clientSignatureBox');
         
         if (techBox && clientBox && typeof SignaturePad !== 'undefined') {
-            techSignaturePad = new SignaturePad(techBox);
-            clientSignaturePad = new SignaturePad(clientBox);
+            // Configurar os canvas para assinaturas
+            techBox.width = techBox.offsetWidth;
+            techBox.height = 150; // Altura fixa para melhor experiência
+            
+            clientBox.width = clientBox.offsetWidth;
+            clientBox.height = 150; // Altura fixa para melhor experiência
+            
+            // Inicializar com opções otimizadas para dispositivos móveis
+            techSignaturePad = new SignaturePad(techBox, {
+                minWidth: 1,
+                maxWidth: 3,
+                penColor: 'black',
+                backgroundColor: 'rgba(255, 255, 255, 0.1)'
+            });
+            
+            clientSignaturePad = new SignaturePad(clientBox, {
+                minWidth: 1,
+                maxWidth: 3,
+                penColor: 'black',
+                backgroundColor: 'rgba(255, 255, 255, 0.1)'
+            });
             
             // Ajustar o tamanho inicial dos pads
             resizeSignaturePads();
             
             console.log('Pads de assinatura inicializados com sucesso');
+            showNotification('Sistema pronto para uso. Áreas de assinatura ativadas.', true);
         } else {
             console.log('Aguardando carregamento das bibliotecas...');
             setTimeout(initSignaturePads, 500);
@@ -60,24 +107,37 @@ document.addEventListener('DOMContentLoaded', function() {
     // Função para gerar o PDF
     document.getElementById('generatePDF').addEventListener('click', function() {
         // Verificar se as bibliotecas necessárias estão carregadas
-        if (typeof html2canvas === 'undefined') {
-            alert('Biblioteca html2canvas não está carregada. Por favor, tente novamente em alguns segundos.');
-            return;
-        }
-        
-        // Verificar se jsPDF está disponível em qualquer namespace
-        if (typeof window.jspdf === 'undefined' && typeof window.jsPDF === 'undefined') {
-            alert('Biblioteca jsPDF não está carregada. Por favor, tente novamente em alguns segundos.');
+        if (typeof html2canvas === 'undefined' || typeof window.jspdf === 'undefined') {
+            showNotification('Carregando bibliotecas necessárias. Por favor, tente novamente em alguns segundos.', false);
             return;
         }
         
         // Verificar se as assinaturas foram feitas
-        if (!techSignaturePad || !clientSignaturePad || techSignaturePad.isEmpty() || clientSignaturePad.isEmpty()) {
-            alert('Por favor, certifique-se de que ambas as assinaturas foram realizadas.');
+        if (!techSignaturePad || !clientSignaturePad) {
+            showNotification('Erro: Áreas de assinatura não inicializadas. Recarregue a página.', false);
+            return;
+        }
+        
+        if (techSignaturePad.isEmpty()) {
+            showNotification('Por favor, adicione a assinatura do ASSESSOR antes de gerar o PDF.', false);
+            document.getElementById('techSignatureBox').style.border = '2px solid red';
+            setTimeout(() => {
+                document.getElementById('techSignatureBox').style.border = '1px solid #ccc';
+            }, 3000);
+            return;
+        }
+        
+        if (clientSignaturePad.isEmpty()) {
+            showNotification('Por favor, adicione a assinatura do CLIENTE antes de gerar o PDF.', false);
+            document.getElementById('clientSignatureBox').style.border = '2px solid red';
+            setTimeout(() => {
+                document.getElementById('clientSignatureBox').style.border = '1px solid #ccc';
+            }, 3000);
             return;
         }
 
         // Mostrar indicador de carregamento
+        showNotification('Gerando PDF, por favor aguarde...', true);
         const loadingIndicator = document.createElement('div');
         loadingIndicator.className = 'loading-indicator';
         loadingIndicator.innerHTML = '<div class="spinner"></div><p>Gerando PDF, por favor aguarde...</p>';
@@ -85,27 +145,25 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Preparar para gerar o PDF
         try {
-            // Verificar se jsPDF está disponível no namespace global ou no objeto window.jspdf
-            let jsPDFClass;
-            if (window.jspdf && window.jspdf.jsPDF) {
-                jsPDFClass = window.jspdf.jsPDF;
-            } else if (window.jsPDF) {
-                jsPDFClass = window.jsPDF;
-            } else {
-                throw new Error('jsPDF não está disponível');
+            // Verificar se jsPDF está disponível no objeto window
+            if (!window.jspdf || !window.jspdf.jsPDF) {
+                throw new Error('jsPDF não está disponível corretamente');
             }
             
-            const doc = new jsPDFClass('p', 'mm', 'a4');
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('p', 'mm', 'a4');
             const form = document.getElementById('serviceOrderForm');
 
             // Ajustar escala para dispositivos móveis
-            const scale = 2;
+            const scale = window.innerWidth < 768 ? 2 : 1.5; // Escala maior para dispositivos móveis
             const options = {
                 scale: scale,
                 useCORS: true,
                 allowTaint: true,
                 scrollX: 0,
-                scrollY: 0
+                scrollY: 0,
+                windowWidth: document.documentElement.offsetWidth,
+                windowHeight: document.documentElement.offsetHeight
             };
 
             // Usar html2canvas para capturar o formulário como uma imagem
@@ -148,23 +206,26 @@ document.addEventListener('DOMContentLoaded', function() {
                         document.body.removeChild(loadingIndicator);
                         
                         // Mostrar mensagem de sucesso
-                        alert('PDF gerado com sucesso! A ordem de serviço também foi salva localmente.');
+                        showNotification(`PDF "${filename}" gerado com sucesso! A ordem de serviço também foi salva no histórico.`, true);
                     } catch (error) {
                         console.error('Erro ao gerar PDF:', error);
                         document.body.removeChild(loadingIndicator);
-                        alert('Ocorreu um erro ao gerar o PDF. Por favor, tente novamente.');
+                        showNotification('Ocorreu um erro ao gerar o PDF. Por favor, tente novamente.', false);
                     }
                 }).catch(error => {
                     console.error('Erro no html2canvas:', error);
                     document.body.removeChild(loadingIndicator);
-                    alert('Ocorreu um erro ao capturar o formulário. Por favor, tente novamente.');
+                    showNotification('Ocorreu um erro ao capturar o formulário. Por favor, tente novamente.', false);
                 });
             }, 500); // Pequeno delay para garantir que o indicador de carregamento seja exibido
         } catch (error) {
             console.error('Erro ao inicializar jsPDF:', error);
-            alert('Ocorreu um erro ao inicializar o gerador de PDF. Verifique se todas as bibliotecas estão carregadas corretamente.');
+            if (loadingIndicator && loadingIndicator.parentNode) {
+                document.body.removeChild(loadingIndicator);
+            }
+            showNotification('Erro ao inicializar o gerador de PDF. Verifique se todas as bibliotecas estão carregadas corretamente.', false);
         }
-    });
+    });}
 
     // Ajustar o tamanho dos pads de assinatura quando a janela for redimensionada
     window.addEventListener('resize', function() {
@@ -192,12 +253,30 @@ document.addEventListener('DOMContentLoaded', function() {
         techSignaturePad.clear();
         clientSignaturePad.clear();
         
-        // Definir largura e altura com base no tamanho do contêiner
-        techSignaturePad.canvas.width = techBox.clientWidth;
-        techSignaturePad.canvas.height = techBox.clientHeight;
+        // Definir altura fixa para melhor experiência em todos os dispositivos
+        const fixedHeight = 150;
         
-        clientSignaturePad.canvas.width = clientBox.clientWidth;
-        clientSignaturePad.canvas.height = clientBox.clientHeight;
+        // Definir largura com base no tamanho do contêiner
+        const techWidth = techBox.clientWidth || techBox.offsetWidth || 300;
+        const clientWidth = clientBox.clientWidth || clientBox.offsetWidth || 300;
+        
+        // Aplicar dimensões ao canvas
+        techBox.width = techWidth;
+        techBox.height = fixedHeight;
+        clientBox.width = clientWidth;
+        clientBox.height = fixedHeight;
+        
+        // Aplicar estilos CSS para garantir que o canvas seja visível
+        techBox.style.width = '100%';
+        techBox.style.height = fixedHeight + 'px';
+        clientBox.style.width = '100%';
+        clientBox.style.height = fixedHeight + 'px';
+        
+        // Definir dimensões do canvas para o SignaturePad
+        techSignaturePad.canvas.width = techWidth;
+        techSignaturePad.canvas.height = fixedHeight;
+        clientSignaturePad.canvas.width = clientWidth;
+        clientSignaturePad.canvas.height = fixedHeight;
         
         // Ajustar a escala do canvas para dispositivos de alta resolução
         const ratio = Math.max(window.devicePixelRatio || 1, 1);
@@ -212,6 +291,22 @@ document.addEventListener('DOMContentLoaded', function() {
         if (clientData) {
             clientSignaturePad.fromDataURL(clientData);
         }
+        
+        // Adicionar indicação visual para as áreas de assinatura
+        const signatureBoxes = document.querySelectorAll('.signature-box');
+        signatureBoxes.forEach(box => {
+            if (box.getAttribute('data-hint-added') !== 'true') {
+                const hint = document.createElement('div');
+                hint.className = 'signature-hint';
+                hint.textContent = 'Toque e arraste para assinar';
+                hint.style.textAlign = 'center';
+                hint.style.color = '#999';
+                hint.style.fontSize = '12px';
+                hint.style.marginTop = '5px';
+                box.parentNode.insertBefore(hint, box.nextSibling);
+                box.setAttribute('data-hint-added', 'true');
+            }
+        });
     }
 
     // Função para salvar dados do formulário no localStorage
@@ -247,10 +342,26 @@ document.addEventListener('DOMContentLoaded', function() {
             
             console.log('Dados salvos com sucesso no armazenamento local');
             
+            // Mostrar notificação de sucesso
+            showNotification(`Ordem de serviço #${formData.orderNumber || 'S/N'} salva no histórico com sucesso!`, true);
+            
             // Atualizar a lista de ordens salvas se o elemento existir
             updateSavedOrdersList();
+            
+            // Adicionar animação de destaque ao botão de ordens salvas
+            const savedOrdersBtn = document.getElementById('showSavedOrders');
+            if (savedOrdersBtn) {
+                savedOrdersBtn.classList.add('highlight-button');
+                setTimeout(() => {
+                    savedOrdersBtn.classList.remove('highlight-button');
+                }, 3000);
+            }
+            
+            return true;
         } catch (error) {
             console.error('Erro ao salvar dados:', error);
+            showNotification('Erro ao salvar a ordem no histórico. Verifique o console para mais detalhes.', false);
+            return false;
         }
     }
     
@@ -319,26 +430,209 @@ document.addEventListener('DOMContentLoaded', function() {
         const order = savedOrders.find(o => o.id === orderId);
         
         if (!order) {
-            alert('Ordem não encontrada!');
+            showNotification('Ordem não encontrada!', false);
             return;
         }
         
-        // Aqui você pode implementar a lógica para exibir os detalhes da ordem
-        // Por exemplo, preencher o formulário com os dados salvos
-        alert(`Visualizando ordem ${order.orderNumber} - ${order.client}\nFuncionalidade em desenvolvimento.`);
+        // Mostrar notificação informativa
+        showNotification(`Visualizando ordem #${order.orderNumber || 'S/N'} - ${order.client || 'Cliente não informado'}`, true);
+        
+        // Criar um modal para exibir os detalhes da ordem
+        const modal = document.createElement('div');
+        modal.className = 'order-details-modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Detalhes da Ordem de Serviço #${order.orderNumber || 'S/N'}</h3>
+                    <button class="close-modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p><strong>Cliente:</strong> ${order.client || 'Não informado'}</p>
+                    <p><strong>Data:</strong> ${order.date ? new Date(order.date).toLocaleDateString() : 'Não informada'}</p>
+                    <p><strong>Equipamento:</strong> ${order.equipment || 'Não informado'}</p>
+                    <p><strong>Número de Série:</strong> ${order.serialNumber || 'Não informado'}</p>
+                    <p><strong>Arquivo PDF:</strong> ${order.filename || 'Não disponível'}</p>
+                    <p><strong>Criado em:</strong> ${new Date(order.createdAt).toLocaleString()}</p>
+                    
+                    <div class="signatures-preview">
+                        <div class="signature-preview">
+                            <h4>Assinatura do Assessor</h4>
+                            <img src="${order.techSignature || ''}" alt="Assinatura do Assessor" />
+                        </div>
+                        <div class="signature-preview">
+                            <h4>Assinatura do Cliente</h4>
+                            <img src="${order.clientSignature || ''}" alt="Assinatura do Cliente" />
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="close-modal-btn">Fechar</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Adicionar estilos para o modal
+        modal.style.position = 'fixed';
+        modal.style.top = '0';
+        modal.style.left = '0';
+        modal.style.width = '100%';
+        modal.style.height = '100%';
+        modal.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+        modal.style.display = 'flex';
+        modal.style.justifyContent = 'center';
+        modal.style.alignItems = 'center';
+        modal.style.zIndex = '2000';
+        
+        const modalContent = modal.querySelector('.modal-content');
+        modalContent.style.backgroundColor = 'white';
+        modalContent.style.borderRadius = '8px';
+        modalContent.style.width = '90%';
+        modalContent.style.maxWidth = '600px';
+        modalContent.style.maxHeight = '90vh';
+        modalContent.style.overflow = 'auto';
+        modalContent.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.3)';
+        
+        const modalHeader = modal.querySelector('.modal-header');
+        modalHeader.style.display = 'flex';
+        modalHeader.style.justifyContent = 'space-between';
+        modalHeader.style.alignItems = 'center';
+        modalHeader.style.padding = '15px 20px';
+        modalHeader.style.borderBottom = '1px solid #eee';
+        
+        const modalBody = modal.querySelector('.modal-body');
+        modalBody.style.padding = '20px';
+        
+        const modalFooter = modal.querySelector('.modal-footer');
+        modalFooter.style.padding = '15px 20px';
+        modalFooter.style.borderTop = '1px solid #eee';
+        modalFooter.style.textAlign = 'right';
+        
+        const closeButtons = modal.querySelectorAll('.close-modal, .close-modal-btn');
+        closeButtons.forEach(button => {
+            button.style.cursor = 'pointer';
+            if (button.classList.contains('close-modal')) {
+                button.style.background = 'none';
+                button.style.border = 'none';
+                button.style.fontSize = '24px';
+            } else {
+                button.style.padding = '8px 15px';
+                button.style.backgroundColor = '#4CAF50';
+                button.style.color = 'white';
+                button.style.border = 'none';
+                button.style.borderRadius = '4px';
+            }
+            
+            button.addEventListener('click', function() {
+                document.body.removeChild(modal);
+            });
+        });
+        
+        const signaturesPreview = modal.querySelector('.signatures-preview');
+        signaturesPreview.style.display = 'flex';
+        signaturesPreview.style.justifyContent = 'space-between';
+        signaturesPreview.style.marginTop = '20px';
+        
+        const signaturePreviewDivs = modal.querySelectorAll('.signature-preview');
+        signaturePreviewDivs.forEach(div => {
+            div.style.flex = '1';
+            div.style.margin = '0 10px';
+            div.style.textAlign = 'center';
+            
+            const img = div.querySelector('img');
+            img.style.maxWidth = '100%';
+            img.style.height = 'auto';
+            img.style.border = '1px solid #ddd';
+            img.style.borderRadius = '4px';
+            img.style.backgroundColor = '#f9f9f9';
+        });
     }
     
     // Função para excluir uma ordem salva
     function deleteSavedOrder(orderId) {
-        if (!confirm('Tem certeza que deseja excluir esta ordem de serviço?')) return;
+        // Criar um modal de confirmação personalizado
+        const confirmModal = document.createElement('div');
+        confirmModal.className = 'confirm-modal';
+        confirmModal.innerHTML = `
+            <div class="confirm-content">
+                <h3>Confirmação</h3>
+                <p>Tem certeza que deseja excluir esta ordem de serviço?</p>
+                <div class="confirm-buttons">
+                    <button id="confirmYes" class="confirm-yes">Sim, excluir</button>
+                    <button id="confirmNo" class="confirm-no">Cancelar</button>
+                </div>
+            </div>
+        `;
         
-        let savedOrders = JSON.parse(localStorage.getItem('serviceOrders') || '[]');
-        savedOrders = savedOrders.filter(o => o.id !== orderId);
+        // Adicionar estilos para o modal
+        confirmModal.style.position = 'fixed';
+        confirmModal.style.top = '0';
+        confirmModal.style.left = '0';
+        confirmModal.style.width = '100%';
+        confirmModal.style.height = '100%';
+        confirmModal.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+        confirmModal.style.display = 'flex';
+        confirmModal.style.justifyContent = 'center';
+        confirmModal.style.alignItems = 'center';
+        confirmModal.style.zIndex = '2000';
         
-        localStorage.setItem('serviceOrders', JSON.stringify(savedOrders));
+        const confirmContent = confirmModal.querySelector('.confirm-content');
+        confirmContent.style.backgroundColor = 'white';
+        confirmContent.style.borderRadius = '8px';
+        confirmContent.style.padding = '20px';
+        confirmContent.style.width = '90%';
+        confirmContent.style.maxWidth = '400px';
+        confirmContent.style.textAlign = 'center';
+        confirmContent.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.3)';
         
-        alert('Ordem de serviço excluída com sucesso!');
-        updateSavedOrdersList();
+        const confirmButtons = confirmModal.querySelector('.confirm-buttons');
+        confirmButtons.style.display = 'flex';
+        confirmButtons.style.justifyContent = 'center';
+        confirmButtons.style.gap = '10px';
+        confirmButtons.style.marginTop = '20px';
+        
+        const yesButton = confirmModal.querySelector('#confirmYes');
+        yesButton.style.padding = '8px 15px';
+        yesButton.style.backgroundColor = '#f44336';
+        yesButton.style.color = 'white';
+        yesButton.style.border = 'none';
+        yesButton.style.borderRadius = '4px';
+        yesButton.style.cursor = 'pointer';
+        
+        const noButton = confirmModal.querySelector('#confirmNo');
+        noButton.style.padding = '8px 15px';
+        noButton.style.backgroundColor = '#ccc';
+        noButton.style.color = 'black';
+        noButton.style.border = 'none';
+        noButton.style.borderRadius = '4px';
+        noButton.style.cursor = 'pointer';
+        
+        document.body.appendChild(confirmModal);
+        
+        // Adicionar event listeners para os botões
+        yesButton.addEventListener('click', function() {
+            // Excluir a ordem
+            let savedOrders = JSON.parse(localStorage.getItem('serviceOrders') || '[]');
+            const orderToDelete = savedOrders.find(o => o.id === orderId);
+            savedOrders = savedOrders.filter(o => o.id !== orderId);
+            
+            localStorage.setItem('serviceOrders', JSON.stringify(savedOrders));
+            
+            // Remover o modal
+            document.body.removeChild(confirmModal);
+            
+            // Mostrar notificação de sucesso
+            showNotification(`Ordem de serviço #${orderToDelete?.orderNumber || 'S/N'} excluída com sucesso!`, true);
+            
+            // Atualizar a lista
+            updateSavedOrdersList();
+        });
+        
+        noButton.addEventListener('click', function() {
+            // Apenas fechar o modal
+            document.body.removeChild(confirmModal);
+        });
     }
     
     // Adicionar botão para mostrar ordens salvas
@@ -390,6 +684,15 @@ document.addEventListener('DOMContentLoaded', function() {
         if (panel.style.display === 'none') {
             panel.style.display = 'block';
             updateSavedOrdersList();
+            
+            // Remover destaque do botão quando o painel é aberto
+            const savedOrdersBtn = document.getElementById('showSavedOrders');
+            if (savedOrdersBtn) {
+                savedOrdersBtn.classList.remove('highlight-button');
+            }
+            
+            // Mostrar notificação informativa
+            showNotification('Visualizando histórico de ordens de serviço', true);
         } else {
             panel.style.display = 'none';
         }
@@ -633,4 +936,4 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('Ordem de serviço excluída:', orderId);
         }
     }
-});
+});}
