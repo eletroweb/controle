@@ -79,7 +79,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Preparar para gerar o PDF
         try {
-            const { jsPDF } = window.jspdf;
+            // Verificar se jsPDF está disponível no namespace global ou no objeto window.jspdf
+            const jsPDF = window.jspdf ? window.jspdf.jsPDF : window.jsPDF;
+            if (!jsPDF) {
+                throw new Error('jsPDF não está disponível');
+            }
             const doc = new jsPDF('p', 'mm', 'a4');
             const form = document.getElementById('serviceOrderForm');
 
@@ -149,7 +153,7 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Erro ao inicializar jsPDF:', error);
             alert('Ocorreu um erro ao inicializar o gerador de PDF. Verifique se todas as bibliotecas estão carregadas corretamente.');
         }
-    });}
+    });
 
     // Ajustar o tamanho dos pads de assinatura quando a janela for redimensionada
     window.addEventListener('resize', function() {
