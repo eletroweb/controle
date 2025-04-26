@@ -335,7 +335,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         showNotification('PDF gerado com sucesso!', true);
                         
                         // Salvar a ordem de serviço no armazenamento local
-                        saveCurrentOrder();
+                        saveCurrentOrder(filename);
                         
                         console.log('PDF gerado com sucesso!');
                     } catch (error) {
@@ -883,7 +883,54 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('generatePDF').click();
     });
     
-    // Função para salvar a ordem de serviço no localStorage
+    // Função para salvar a ordem de serviço atual no localStorage
+    function saveCurrentOrder(filename) {
+        try {
+            // Coletar todos os dados do formulário
+            const formData = {
+                id: Date.now(), // ID único baseado no timestamp
+                filename: filename || '',
+                date: document.querySelector('input[name="date"]').value,
+                orderNumber: document.querySelector('input[name="orderNumber"]').value,
+                client: document.querySelector('input[name="client"]').value,
+                equipment: document.querySelector('input[name="equipment"]').value,
+                serialNumber: document.querySelector('input[name="serialNumber"]').value,
+                techSignature: techSignaturePad ? techSignaturePad.toDataURL() : null,
+                clientSignature: clientSignaturePad ? clientSignaturePad.toDataURL() : null,
+                createdAt: new Date().toISOString()
+            };
+            
+            // Obter ordens existentes ou inicializar array vazio
+            let savedOrders = JSON.parse(localStorage.getItem('serviceOrders') || '[]');
+            
+            // Adicionar nova ordem
+            savedOrders.push(formData);
+            
+            // Limitar a quantidade de ordens salvas para evitar exceder o limite do localStorage
+            if (savedOrders.length > 50) {
+                savedOrders = savedOrders.slice(-50); // Manter apenas as 50 mais recentes
+            }
+            
+            // Salvar no localStorage
+            localStorage.setItem('serviceOrders', JSON.stringify(savedOrders));
+            
+            console.log('Dados salvos com sucesso no armazenamento local');
+            
+            // Mostrar notificação de sucesso
+            showNotification(`Ordem de serviço #${formData.orderNumber || 'S/N'} salva no histórico com sucesso!`, true);
+            
+            // Atualizar a lista de ordens salvas se o elemento existir
+            updateSavedOrdersList();
+            
+            return true;
+        } catch (error) {
+            console.error('Erro ao salvar dados:', error);
+            showNotification('Erro ao salvar a ordem no histórico. Verifique o console para mais detalhes.', false);
+            return false;
+        }
+    }
+    
+    // Função para salvar a ordem de serviço no localStorage (versão antiga)
     function saveServiceOrder() {
         const form = document.getElementById('serviceOrderForm');
         const formData = new FormData(form);
