@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.head.appendChild(html2canvasScript);
     }
     
-    if (typeof window.jspdf === 'undefined') {
+    if (typeof window.jspdf === 'undefined' && typeof window.jsPDF === 'undefined') {
         console.error('jsPDF não está carregado. Adicionando script...');
         const jspdfScript = document.createElement('script');
         jspdfScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
@@ -60,8 +60,14 @@ document.addEventListener('DOMContentLoaded', function() {
     // Função para gerar o PDF
     document.getElementById('generatePDF').addEventListener('click', function() {
         // Verificar se as bibliotecas necessárias estão carregadas
-        if (typeof html2canvas === 'undefined' || typeof window.jspdf === 'undefined') {
-            alert('Carregando bibliotecas necessárias. Por favor, tente novamente em alguns segundos.');
+        if (typeof html2canvas === 'undefined') {
+            alert('Biblioteca html2canvas não está carregada. Por favor, tente novamente em alguns segundos.');
+            return;
+        }
+        
+        // Verificar se jsPDF está disponível em qualquer namespace
+        if (typeof window.jspdf === 'undefined' && typeof window.jsPDF === 'undefined') {
+            alert('Biblioteca jsPDF não está carregada. Por favor, tente novamente em alguns segundos.');
             return;
         }
         
@@ -80,11 +86,16 @@ document.addEventListener('DOMContentLoaded', function() {
         // Preparar para gerar o PDF
         try {
             // Verificar se jsPDF está disponível no namespace global ou no objeto window.jspdf
-            const jsPDF = window.jspdf ? window.jspdf.jsPDF : window.jsPDF;
-            if (!jsPDF) {
+            let jsPDFClass;
+            if (window.jspdf && window.jspdf.jsPDF) {
+                jsPDFClass = window.jspdf.jsPDF;
+            } else if (window.jsPDF) {
+                jsPDFClass = window.jsPDF;
+            } else {
                 throw new Error('jsPDF não está disponível');
             }
-            const doc = new jsPDF('p', 'mm', 'a4');
+            
+            const doc = new jsPDFClass('p', 'mm', 'a4');
             const form = document.getElementById('serviceOrderForm');
 
             // Ajustar escala para dispositivos móveis
@@ -622,4 +633,4 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('Ordem de serviço excluída:', orderId);
         }
     }
-});}
+});
