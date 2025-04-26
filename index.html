@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Sistema de Ordem de Serviço - BioStock</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Bibliotecas necessárias -->
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <form id="serviceOrderForm">
+            <div class="header">
+                <div class="logo">BioStock</div>
+                <div class="title">
+                    <h1>Relatório de Assessoria Técnica</h1>
+                </div>
+                <div class="order-info">
+                    <div class="field">
+                        <label>Chamado Técnico Nº</label>
+                        <input type="text" name="orderNumber">
+                    </div>
+                    <div class="field">
+                        <label>Data</label>
+                        <input type="date" name="date">
+                    </div>
+                </div>
+            </div>
+
+            <div class="company-info">
+                <p>Rua Cotoxó, 757 - Perdizes, São Paulo - SP - CEP: 05021-001 - Tel: (11) 3871-0095 - suporte@biostock.com.br / atendimento@biostock.com.br</p>
+            </div>
+
+            <div class="client-info">
+                <div class="field-row">
+                    <div class="field">
+                        <label>CLIENTE:</label>
+                        <input type="text" name="client">
+                    </div>
+                    <div class="field">
+                        <label>TELEFONE:</label>
+                        <input type="tel" name="phone">
+                    </div>
+                </div>
+                <div class="field-row">
+                    <div class="field">
+                        <label>CONTATO:</label>
+                        <input type="text" name="contact">
+                    </div>
+                    <div class="field">
+                        <label>SETOR:</label>
+                        <input type="text" name="sector">
+                    </div>
+                </div>
+                <div class="field-row">
+                    <div class="field">
+                        <label>CIDADE:</label>
+                        <input type="text" name="city">
+                    </div>
+                    <div class="field">
+                        <label>ESTADO:</label>
+                        <input type="text" name="state">
+                    </div>
+                </div>
+                <div class="field-row">
+                    <div class="field">
+                        <label>EQUIPAMENTO:</label>
+                        <input type="text" name="equipment">
+                    </div>
+                    <div class="field">
+                        <label>Nº DE SÉRIE:</label>
+                        <input type="text" name="serialNumber">
+                    </div>
+                </div>
+            </div>
+
+            <div class="service-type">
+                <label>OS:</label>
+                <div class="checkbox-group">
+                    <div class="checkbox">
+                        <input type="checkbox" id="installation" name="serviceType" value="installation">
+                        <label for="installation">INSTALAÇÃO</label>
+                    </div>
+                    <div class="checkbox">
+                        <input type="checkbox" id="preventive" name="serviceType" value="preventive">
+                        <label for="preventive">PREVENTIVA</label>
+                    </div>
+                    <div class="checkbox">
+                        <input type="checkbox" id="corrective" name="serviceType" value="corrective">
+                        <label for="corrective">CORRETIVA</label>
+                    </div>
+                    <div class="checkbox">
+                        <input type="checkbox" id="budget" name="serviceType" value="budget">
+                        <label for="budget">ORÇAMENTO</label>
+                    </div>
+                    <div class="checkbox">
+                        <input type="checkbox" id="technicalVisit" name="serviceType" value="technicalVisit">
+                        <label for="technicalVisit">VISITA TÉCNICA</label>
+                    </div>
+                    <div class="checkbox">
+                        <input type="checkbox" id="withdrawal" name="serviceType" value="withdrawal">
+                        <label for="withdrawal">RETIRADA</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="description">
+                <label>DESCRIÇÃO DO CHAMADO / SERVIÇO REALIZADO:</label>
+                <textarea name="serviceDescription" rows="10"></textarea>
+            </div>
+
+            <div class="maintenance-section">
+                <h3>PERIODICIDADE TRIMESTRAL - NÍVEL 1</h3>
+                <div class="maintenance-item">
+                    <div class="item-description">Descontaminação / Higienização do Sistema hidráulico e sub sistemas</div>
+                    <div class="status-options">
+                        <div class="status">
+                            <input type="checkbox" id="verified1" name="item1" value="verified">
+                            <label for="verified1">Verificado - OK</label>
+                        </div>
+                        <div class="status">
+                            <input type="checkbox" id="performed1" name="item1" value="performed">
+                            <label for="performed1">Efetuado - OK</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="maintenance-item">
+                    <div class="item-description">Higienização completa do equipamento e acessórios</div>
+                    <div class="status-options">
+                        <div class="status">
+                            <input type="checkbox" id="verified2" name="item2" value="verified">
+                            <label for="verified2">Verificado - OK</label>
+                        </div>
+                        <div class="status">
+                            <input type="checkbox" id="performed2" name="item2" value="performed">
+                            <label for="performed2">Efetuado - OK</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="maintenance-item">
+                    <div class="item-description">Verificação de vazamentos</div>
+                    <div class="status-options">
+                        <div class="status">
+                            <input type="checkbox" id="verified3" name="item3" value="verified">
+                            <label for="verified3">Verificado - OK</label>
+                        </div>
+                        <div class="status">
+                            <input type="checkbox" id="performed3" name="item3" value="performed">
+                            <label for="performed3">Efetuado - OK</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="maintenance-item">
+                    <div class="item-description">Verificação de ruídos e vibrações</div>
+                    <div class="status-options">
+                        <div class="status">
+                            <input type="checkbox" id="verified4" name="item4" value="verified">
+                            <label for="verified4">Verificado - OK</label>
+                        </div>
+                        <div class="status">
+                            <input type="checkbox" id="performed4" name="item4" value="performed">
+                            <label for="performed4">Efetuado - OK</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="maintenance-item">
+                    <div class="item-description">Verificação de conexões elétricas</div>
+                    <div class="status-options">
+                        <div class="status">
+                            <input type="checkbox" id="verified5" name="item5" value="verified">
+                            <label for="verified5">Verificado - OK</label>
+                        </div>
+                        <div class="status">
+                            <input type="checkbox" id="performed5" name="item5" value="performed">
+                            <label for="performed5">Efetuado - OK</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="maintenance-item">
+                    <div class="item-description">Verificação de funcionamento do sistema de injeção</div>
+                    <div class="status-options">
+                        <div class="status">
+                            <input type="checkbox" id="verified6" name="item6" value="verified">
+                            <label for="verified6">Verificado - OK</label>
+                        </div>
+                        <div class="status">
+                            <input type="checkbox" id="performed6" name="item6" value="performed">
+                            <label for="performed6">Efetuado - OK</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="maintenance-item">
+                    <div class="item-description">Limpeza e lubrificação de partes móveis</div>
+                    <div class="status-options">
+                        <div class="status">
+                            <input type="checkbox" id="verified7" name="item7" value="verified">
+                            <label for="verified7">Verificado - OK</label>
+                        </div>
+                        <div class="status">
+                            <input type="checkbox" id="performed7" name="item7" value="performed">
+                            <label for="performed7">Efetuado - OK</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="maintenance-item">
+                    <div class="item-description">Calibração de sensores de pressão</div>
+                    <div class="status-options">
+                        <div class="status">
+                            <input type="checkbox" id="verified8" name="item8" value="verified">
+                            <label for="verified8">Verificado - OK</label>
+                        </div>
+                        <div class="status">
+                            <input type="checkbox" id="performed8" name="item8" value="performed">
+                            <label for="performed8">Efetuado - OK</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="maintenance-item">
+                    <div class="item-description">Verificação do sistema de refrigeração</div>
+                    <div class="status-options">
+                        <div class="status">
+                            <input type="checkbox" id="verified9" name="item9" value="verified">
+                            <label for="verified9">Verificado - OK</label>
+                        </div>
+                        <div class="status">
+                            <input type="checkbox" id="performed9" name="item9" value="performed">
+                            <label for="performed9">Efetuado - OK</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="maintenance-item">
+                    <div class="item-description">Teste de funcionamento geral</div>
+                    <div class="status-options">
+                        <div class="status">
+                            <input type="checkbox" id="verified10" name="item10" value="verified">
+                            <label for="verified10">Verificado - OK</label>
+                        </div>
+                        <div class="status">
+                            <input type="checkbox" id="performed10" name="item10" value="performed">
+                            <label for="performed10">Efetuado - OK</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="maintenance-section">
+                <h3>PERIODICIDADE ANUAL - NÍVEL 2</h3>
+                <div class="maintenance-item">
+                    <div class="item-description">TROCAS (se necessário):</div>
+                </div>
+                <div class="maintenance-item">
+                    <div class="item-description">Seringas</div>
+                    <div class="status-options">
+                        <div class="status">
+                            <input type="checkbox" id="verified20" name="item20" value="verified">
+                            <label for="verified20">Verificado - OK</label>
+                        </div>
+                        <div class="status">
+                            <input type="checkbox" id="replaced20" name="item20" value="replaced">
+                            <label for="replaced20">Trocado - OK</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="maintenance-item">
+                    <div class="item-description">Tubulações</div>
+                    <div class="status-options">
+                        <div class="status">
+                            <input type="checkbox" id="verified21" name="item21" value="verified">
+                            <label for="verified21">Verificado - OK</label>
+                        </div>
+                        <div class="status">
+                            <input type="checkbox" id="replaced21" name="item21" value="replaced">
+                            <label for="replaced21">Trocado - OK</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="maintenance-item">
+                    <div class="item-description">Válvulas</div>
+                    <div class="status-options">
+                        <div class="status">
+                            <input type="checkbox" id="verified22" name="item22" value="verified">
+                            <label for="verified22">Verificado - OK</label>
+                        </div>
+                        <div class="status">
+                            <input type="checkbox" id="replaced22" name="item22" value="replaced">
+                            <label for="replaced22">Trocado - OK</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="maintenance-item">
+                    <div class="item-description">Filtros</div>
+                    <div class="status-options">
+                        <div class="status">
+                            <input type="checkbox" id="verified23" name="item23" value="verified">
+                            <label for="verified23">Verificado - OK</label>
+                        </div>
+                        <div class="status">
+                            <input type="checkbox" id="replaced23" name="item23" value="replaced">
+                            <label for="replaced23">Trocado - OK</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="maintenance-item">
+                    <div class="item-description">Selos e vedações</div>
+                    <div class="status-options">
+                        <div class="status">
+                            <input type="checkbox" id="verified24" name="item24" value="verified">
+                            <label for="verified24">Verificado - OK</label>
+                        </div>
+                        <div class="status">
+                            <input type="checkbox" id="replaced24" name="item24" value="replaced">
+                            <label for="replaced24">Trocado - OK</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="maintenance-item">
+                    <div class="item-description">Cabos e conectores</div>
+                    <div class="status-options">
+                        <div class="status">
+                            <input type="checkbox" id="verified25" name="item25" value="verified">
+                            <label for="verified25">Verificado - OK</label>
+                        </div>
+                        <div class="status">
+                            <input type="checkbox" id="replaced25" name="item25" value="replaced">
+                            <label for="replaced25">Trocado - OK</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="maintenance-item">
+                    <div class="item-description">AJUSTES E CALIBRAÇÕES:</div>
+                </div>
+                <div class="maintenance-item">
+                    <div class="item-description">Calibração de pressão</div>
+                    <div class="status-options">
+                        <div class="status">
+                            <input type="checkbox" id="verified26" name="item26" value="verified">
+                            <label for="verified26">Verificado - OK</label>
+                        </div>
+                        <div class="status">
+                            <input type="checkbox" id="performed26" name="item26" value="performed">
+                            <label for="performed26">Efetuado - OK</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="maintenance-item">
+                    <div class="item-description">Calibração de fluxo</div>
+                    <div class="status-options">
+                        <div class="status">
+                            <input type="checkbox" id="verified27" name="item27" value="verified">
+                            <label for="verified27">Verificado - OK</label>
+                        </div>
+                        <div class="status">
+                            <input type="checkbox" id="performed27" name="item27" value="performed">
+                            <label for="performed27">Efetuado - OK</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="maintenance-item">
+                    <div class="item-description">Ajuste de parâmetros de operação</div>
+                    <div class="status-options">
+                        <div class="status">
+                            <input type="checkbox" id="verified28" name="item28" value="verified">
+                            <label for="verified28">Verificado - OK</label>
+                        </div>
+                        <div class="status">
+                            <input type="checkbox" id="performed28" name="item28" value="performed">
+                            <label for="performed28">Efetuado - OK</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="maintenance-item">
+                    <div class="item-description">Atualização de software (se aplicável)</div>
+                    <div class="status-options">
+                        <div class="status">
+                            <input type="checkbox" id="verified29" name="item29" value="verified">
+                            <label for="verified29">Verificado - OK</label>
+                        </div>
+                        <div class="status">
+                            <input type="checkbox" id="performed29" name="item29" value="performed">
+                            <label for="performed29">Efetuado - OK</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="observations">
+                <label>OBSERVAÇÕES:</label>
+                <textarea name="observations" rows="5"></textarea>
+            </div>
+
+            <div class="technical-info">
+                <div class="field-row">
+                    <div class="field">
+                        <label>Coluna S/N:</label>
+                        <input type="text" name="columnSN">
+                    </div>
+                    <div class="field">
+                        <label>Nº Testes:</label>
+                        <input type="text" name="testsNumber">
+                    </div>
+                    <div class="field">
+                        <label>Filter Count:</label>
+                        <input type="text" name="filterCount">
+                    </div>
+                    <div class="field">
+                        <label>Press MPa:</label>
+                        <input type="text" name="pressMPa">
+                    </div>
+                </div>
+            </div>
+
+            <div class="signatures">
+                <div class="signature-field">
+                    <label>ASSESSOR:</label>
+                    <div id="techSignatureBox" class="signature-box"></div>
+                    <button type="button" id="clearTechSignature" class="clear-button">Limpar</button>
+                </div>
+                <div class="signature-field">
+                    <label>CLIENTE:</label>
+                    <div id="clientSignatureBox" class="signature-box"></div>
+                    <button type="button" id="clearClientSignature" class="clear-button">Limpar</button>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" id="generatePDF">Gerar PDF</button>
+                <button type="reset">Limpar Formulário</button>
+                <button type="button" id="showSavedOrders">Ordens Salvas</button>
+            </div>
+        </form>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/signature_pad/1.5.3/signature_pad.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
