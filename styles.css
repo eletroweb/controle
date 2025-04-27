@@ -25,32 +25,45 @@ body {
     position: relative;
     box-sizing: border-box;
     page-break-after: always;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 /* Cabeçalho */
 .header {
-    display: flex;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: 1fr 2fr 1fr;
     align-items: center;
+    justify-items: center;
     margin-bottom: 10px;
     border-bottom: 1px solid #333;
-    padding-bottom: 5px;
+    padding-bottom: 10px;
+    gap: 10px;
+    width: 100%;
 }
 
 .logo {
     font-size: 18px;
     font-weight: bold;
     color: #333;
+    grid-column: 1;
+}
+
+.title {
+    grid-column: 2;
+    text-align: center;
 }
 
 .title h1 {
     font-size: 16px;
-    text-align: center;
 }
 
 .order-info {
+    grid-column: 3;
     display: flex;
     flex-direction: column;
+    gap: 5px;
 }
 
 /* Informações da empresa */
@@ -63,24 +76,24 @@ body {
 /* Campos do formulário */
 .field-row {
     display: flex;
-    margin-bottom: 10px;
+    margin-bottom: 15px;
     width: 100%;
+    gap: 15px;
 }
 
 .field {
     flex: 1;
-    margin-right: 10px;
-}
-
-.field:last-child {
-    margin-right: 0;
+    background-color: #f9f9f9;
+    padding: 8px;
+    border-radius: 4px;
 }
 
 label {
     display: block;
     font-weight: bold;
-    margin-bottom: 5px;
+    margin-bottom: 8px;
     font-size: 14px;
+    color: #333;
 }
 
 input[type="text"],
@@ -91,6 +104,7 @@ textarea {
     padding: 8px;
     border: 1px solid #ccc;
     border-radius: 4px;
+    background-color: #fff;
 }
 
 textarea {
@@ -125,37 +139,81 @@ textarea {
 
 /* Seções de manutenção */
 .maintenance-section {
-    margin: 20px 0;
+    margin: 15px 0;
     border: 1px solid #ddd;
-    padding: 10px;
+    padding: 15px;
     border-radius: 4px;
+    background-color: #f9f9f9;
+    max-width: 210mm;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .maintenance-section h3 {
     font-size: 16px;
-    margin-bottom: 10px;
+    margin-bottom: 15px;
     background-color: #f0f0f0;
-    padding: 5px;
+    padding: 8px;
     border-radius: 4px;
+    text-align: center;
 }
 
 .maintenance-item {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 8px;
-    padding-bottom: 8px;
+    align-items: center;
+    margin: 15px 0;
+    padding: 15px;
+    border: 1px solid #ddd;
+    background-color: #f9f9f9;
+    border-radius: 4px;
+    border-bottom: none;
+    max-width: 210mm;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Estilo unificado para todos os itens de manutenção */
+.maintenance-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 10px 0; /* Margem ajustada para consistência */
+    padding: 15px; /* Padding consistente */
+    border: 1px solid #ddd; /* Borda consistente */
+    background-color: #f9f9f9; /* Fundo consistente */
+    border-radius: 4px;
+    max-width: 210mm;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Remover regras específicas que causavam inconsistência */
+/* .maintenance-section .maintenance-item { ... } */
+/* .container form > .maintenance-item, ... { ... } */
+
+/* Ajustes menores se necessário para itens dentro da seção */
+.maintenance-section .maintenance-item {
+    /* Manter apenas ajustes específicos, se houver, ex: remover margem superior se necessário */
+    /* Exemplo: margin-top: 0; */
+    /* A maioria dos estilos agora vem da regra .maintenance-item base */
+}
     border-bottom: 1px solid #eee;
+    background-color: #fff;
+    border-radius: 4px;
 }
 
 .item-description {
     flex: 2;
     font-size: 14px;
+    padding: 5px;
 }
 
 .status-options {
     flex: 1;
     display: flex;
     justify-content: space-around;
+    align-items: center;
 }
 
 .status {
@@ -164,20 +222,20 @@ textarea {
 }
 
 /* Observações */
-.observations {
+.observations, .technical-info, .signatures {
     margin: 15px 0;
+    background-color: #f9f9f9;
+    padding: 15px;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+    max-width: 210mm;
+    width: 100%;
+    box-sizing: border-box;
 }
 
-/* Informações técnicas */
-.technical-info {
-    margin: 15px 0;
-}
-
-/* Assinaturas */
 .signatures {
     display: flex;
     flex-direction: column;
-    margin: 20px 0;
 }
 
 .signature-field {
@@ -437,8 +495,9 @@ input:focus, textarea:focus, button:focus {
     
     .container {
         padding: 10px;
-        margin: 0;
+        margin: 0 auto;
         box-shadow: none;
+        width: 95%;
     }
     
     .header {
@@ -522,6 +581,16 @@ input:focus, textarea:focus, button:focus {
 /* Estilos para impressão */
 @media print {
     body {
+        font-size: 12pt !important;
+    }
+    .signature-box {
+        height: 200px !important;
+        page-break-inside: avoid !important;
+    }
+    .signature-field {
+        page-break-inside: avoid !important;
+    }
+    body {
         padding: 0;
         margin: 0;
         background-color: white;
@@ -547,6 +616,37 @@ input:focus, textarea:focus, button:focus {
     
     .maintenance-section {
         page-break-inside: avoid;
+    }
+
+    /* Garantir que a seção de observações seja visível */
+    .observations {
+        display: block !important;
+        visibility: visible !important;
+        page-break-inside: avoid !important; /* Evitar que quebre no meio */
+    }
+
+    .observations textarea {
+        display: block !important; /* Garantir que o textarea também seja visível */
+        border: 1px solid #ccc; /* Adicionar borda para clareza no PDF */
+        background-color: #fff !important; /* Fundo branco */
+        color: #000 !important; /* Texto preto */
+    }
+
+    /* Garantir que os campos de nome da assinatura sejam visíveis */
+    .signature-field .field,
+    .signature-field label,
+    .signature-name-input {
+        display: block !important;
+        visibility: visible !important;
+        margin-top: 5px !important; /* Adicionar um pequeno espaço */
+    }
+
+    .signature-name-input {
+        border: 1px solid #ccc; /* Adicionar uma borda simples para clareza */
+        padding: 5px;
+        width: 90%; /* Ajustar largura */
+        margin-left: auto;
+        margin-right: auto;
     }
 }
 

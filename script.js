@@ -136,39 +136,55 @@ document.addEventListener('DOMContentLoaded', function() {
             // Adicionar texto de orientação nas áreas de assinatura
             addSignatureHints();
             
-            // Adicionar evento de redimensionamento da janela
+            // Adicionar evento de redimensionamento da janela com debounce
             if (!window.signatureResizeListenerAdded) {
-                window.addEventListener('resize', function() {
-                    // Usar debounce para evitar chamadas excessivas
-                    if (window.resizeTimeout) {
-                        clearTimeout(window.resizeTimeout);
-                    }
-                    window.resizeTimeout = setTimeout(function() {
-                        console.log('Redimensionando pads de assinatura após mudança de tamanho da janela');
-                        resizeSignaturePads();
-                    }, 250);
-                });
+                window.addEventListener('resize', debounce(resizeSignaturePads, 250));
                 window.signatureResizeListenerAdded = true;
             }
-            
-            // Adicionar eventos de toque para melhor experiência em dispositivos móveis
-            if (isMobile) {
-                document.addEventListener('touchmove', function(e) {
-                    if (e.target === techCanvas || e.target === clientCanvas) {
+
+            // Adicionar eventos de toque diretamente aos canvas para evitar conflitos
+            [techCanvas, clientCanvas].forEach(canvas => {
+                canvas.addEventListener('touchstart', (e) => {
+                    // Permitir scroll se o toque não for para desenhar
+                    if (e.touches.length === 1) {
+                       // A lógica de desenho do SignaturePad cuidará disso
+                    }
+                }, { passive: true }); // Usar passive: true para melhor performance de scroll
+
+                canvas.addEventListener('touchmove', (e) => {
+                    // Prevenir scroll APENAS quando estiver desenhando
+                    if (e.touches.length === 1 && ((e.target === techCanvas && techSignaturePad && techSignaturePad.isDrawing) || (e.target === clientCanvas && clientSignaturePad && clientSignaturePad.isDrawing))) {
                         e.preventDefault();
                     }
-                }, { passive: false });
-            }
-            
+                }, { passive: false }); // passive: false é necessário para preventDefault
+            });
+
             console.log('Pads de assinatura inicializados com sucesso');
             showNotification('Sistema pronto para uso. Áreas de assinatura ativadas.', true);
         } catch (error) {
             console.error('Erro ao inicializar pads de assinatura:', error);
             showNotification('Erro ao inicializar áreas de assinatura. Tente recarregar a página.', false);
-            setTimeout(initSignaturePads, 1000); // Tentar novamente após 1 segundo
+            // Não tentar re-inicializar automaticamente em caso de erro grave, pode causar loop
+            // setTimeout(initSignaturePads, 1000);
         }
     }
-    
+
+    // Função Debounce para otimizar chamadas de resize
+    function debounce(func, wait, immediate) {
+        var timeout;
+        return function() {
+            var context = this, args = arguments;
+            var later = function() {
+                timeout = null;
+                if (!immediate) func.apply(context, args);
+            };
+            var callNow = immediate && !timeout;
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+            if (callNow) func.apply(context, args);
+        };
+    };
+
     function addSignatureHints() {
         const signatureBoxes = document.querySelectorAll('.signature-box');
         signatureBoxes.forEach(box => {
@@ -337,18 +353,31 @@ document.addEventListener('DOMContentLoaded', function() {
                 scrollX: 0,
                 scrollY: 0,
                 windowWidth: document.documentElement.offsetWidth,
-                windowHeight: document.documentElement.offsetHeight,
-                logging: false, // Desativar logs para melhor desempenho
-                backgroundColor: '#ffffff', // Garantir fundo branco
-                imageTimeout: 15000, // Aumentar timeout para dispositivos mais lentos
+                windowHeight: document.documentElement.scrollHeight, // Usar altura total da página
+                logging: false,
+                backgroundColor: '#ffffff',
+                imageTimeout: 15000,
+                ignoreElements: function(element) {
+                    // Ignorar apenas elementos específicos que não devem aparecer no PDF
+                    return element.classList.contains('form-actions') || 
+                           element.classList.contains('clear-button');
+                },
                 onclone: function(clonedDoc) {
-                    // Ajustar elementos no clone para melhor renderização
+                    // Garantir que todas as seções sejam visíveis
                     const clonedForm = clonedDoc.getElementById('serviceOrderForm');
                     if (clonedForm) {
-                        // Remover botões e elementos desnecessários no PDF
+                        clonedForm.style.overflow = 'visible';
+                        clonedForm.style.height = 'auto';
+                        // Manter apenas os botões ocultos
                         const buttons = clonedForm.querySelectorAll('.form-actions, .clear-button');
                         buttons.forEach(button => button.style.display = 'none');
                     }
+                    // Garantir que as assinaturas sejam renderizadas
+                    const signatureBoxes = clonedDoc.querySelectorAll('.signature-box');
+                    signatureBoxes.forEach(box => {
+                        box.style.visibility = 'visible';
+                        box.style.opacity = '1';
+                    });
                 }
             };
 
@@ -436,7 +465,39 @@ document.addEventListener('DOMContentLoaded', function() {
     // Executar após um pequeno atraso para garantir que os elementos estejam carregados
     setTimeout(resizeSignaturePads, 500);
 
-    function resizeSignaturePads() {
+    function generatePDF() {
+    // Garantir que todo o conteúdo seja renderizado antes de capturar
+    document.querySelectorAll('.signature-field').forEach(field => {
+        field.style.display = 'block';
+        field.style.visibility = 'visible';
+    });
+
+    // Capturar todo o formulário incluindo as assinaturas
+    const element = document.getElementById('mainForm');
+    
+    html2canvas(element, {
+        scale: 2,
+        logging: true,
+        useCORS: true,
+        allowTaint: true,
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: element.scrollWidth
+        // windowHeight: element.scrollHeight // Removido para permitir que html2canvas determine a altura
+    }).then(canvas => {
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        
+        const imgProps = pdf.getImageProperties(imgData);
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+        
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        pdf.save('formulario.pdf');
+    });
+}
+
+function resizeSignaturePads() {
         // Redimensionar os pads de assinatura para se ajustarem aos seus contêineres
         const techBox = document.getElementById('techSignatureBox');
         const clientBox = document.getElementById('clientSignatureBox');
@@ -532,21 +593,28 @@ document.addEventListener('DOMContentLoaded', function() {
             // Atualizar dicas visuais
             addSignatureHints();
             
-            // Adicionar eventos de toque para melhor experiência em dispositivos móveis
-            if (isMobile) {
-                document.addEventListener('touchmove', function(e) {
-                    if (e.target === techCanvas || e.target === clientCanvas) {
-                        e.preventDefault();
+            // Adicionar eventos de toque aos novos canvas após redimensionamento
+            [techCanvas, clientCanvas].forEach(canvas => {
+                 canvas.addEventListener('touchstart', (e) => {
+                    if (e.touches.length === 1) {
+                       // A lógica de desenho do SignaturePad cuidará disso
+                    }
+                }, { passive: true });
+
+                canvas.addEventListener('touchmove', (e) => {
+                    // Prevenir scroll APENAS quando estiver desenhando
+                    if (e.touches.length === 1 && ((e.target === techCanvas && techSignaturePad && techSignaturePad.isDrawing) || (e.target === clientCanvas && clientSignaturePad && clientSignaturePad.isDrawing))) {
+                         e.preventDefault();
                     }
                 }, { passive: false });
-            }
-            
+            });
+
             console.log('Pads de assinatura redimensionados com sucesso');
         } catch (error) {
             console.error('Erro ao redimensionar pads de assinatura:', error);
             showNotification('Erro ao configurar áreas de assinatura. Tente recarregar a página.', false);
-            // Tentar inicializar novamente após erro
-            setTimeout(initSignaturePads, 1000);
+            // Não tentar re-inicializar automaticamente em caso de erro grave
+            // setTimeout(initSignaturePads, 1000);
         }
     }
 
@@ -564,6 +632,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 serialNumber: document.querySelector('input[name="serialNumber"]').value,
                 techSignature: techSignaturePad ? techSignaturePad.toDataURL() : null,
                 clientSignature: clientSignaturePad ? clientSignaturePad.toDataURL() : null,
+                assessorName: document.getElementById('assessorName').value,
+                clientName: document.getElementById('clientName').value,
                 createdAt: new Date().toISOString()
             };
             
@@ -980,6 +1050,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 serialNumber: document.querySelector('input[name="serialNumber"]').value,
                 techSignature: techSignaturePad ? techSignaturePad.toDataURL() : null,
                 clientSignature: clientSignaturePad ? clientSignaturePad.toDataURL() : null,
+                assessorName: document.getElementById('assessorName').value,
+                clientName: document.getElementById('clientName').value,
                 createdAt: new Date().toISOString()
             };
             
@@ -1224,4 +1296,14 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('Ordem de serviço excluída:', orderId);
         }
     }
-});}
+
+    // Inicializar tudo quando o DOM estiver pronto
+    console.log('Adicionando listener para DOMContentLoaded...');
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOM carregado, inicializando aplicação...');
+        initSignaturePads(); // Inicializa os pads de assinatura
+        loadFormData(); // Carregar dados salvos, se houver
+        setupEventListeners(); // Configurar outros ouvintes de eventos
+    });
+
+}); // Fechamento do wrapper IIFE ou similar
