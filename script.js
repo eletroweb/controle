@@ -76,45 +76,65 @@ document.addEventListener('DOMContentLoaded', function() {
         
         try {
             // Configurar os canvas para assinaturas
-            const fixedHeight = 150; // Altura fixa para melhor experiência
+            // Altura adaptativa para dispositivos móveis
+            const isMobile = window.innerWidth < 768;
+            const fixedHeight = isMobile ? 180 : 150;
             
             // Definir largura com base no tamanho do contêiner
             const techWidth = techBox.offsetWidth || techBox.clientWidth || 300;
             const clientWidth = clientBox.offsetWidth || clientBox.clientWidth || 300;
             
+            // Limpar canvas existentes se houver
+            while (techBox.firstChild) techBox.removeChild(techBox.firstChild);
+            while (clientBox.firstChild) clientBox.removeChild(clientBox.firstChild);
+            
+            // Criar novos canvas
+            const techCanvas = document.createElement('canvas');
+            const clientCanvas = document.createElement('canvas');
+            
+            // Adicionar canvas aos contêineres
+            techBox.appendChild(techCanvas);
+            clientBox.appendChild(clientCanvas);
+            
             // Aplicar dimensões ao canvas
-            techBox.width = techWidth;
-            techBox.height = fixedHeight;
-            clientBox.width = clientWidth;
-            clientBox.height = fixedHeight;
+            techCanvas.width = techWidth * (window.devicePixelRatio || 1);
+            techCanvas.height = fixedHeight * (window.devicePixelRatio || 1);
+            clientCanvas.width = clientWidth * (window.devicePixelRatio || 1);
+            clientCanvas.height = fixedHeight * (window.devicePixelRatio || 1);
             
             // Aplicar estilos CSS para garantir que o canvas seja visível
-            techBox.style.width = '100%';
-            techBox.style.height = fixedHeight + 'px';
-            clientBox.style.width = '100%';
-            clientBox.style.height = fixedHeight + 'px';
+            techCanvas.style.width = '100%';
+            techCanvas.style.height = fixedHeight + 'px';
+            clientCanvas.style.width = '100%';
+            clientCanvas.style.height = fixedHeight + 'px';
+            
+            // Ajustar escala para dispositivos de alta resolução
+            const techCtx = techCanvas.getContext('2d');
+            const clientCtx = clientCanvas.getContext('2d');
+            techCtx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
+            clientCtx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
             
             // Inicializar com opções otimizadas para dispositivos móveis
-            techSignaturePad = new SignaturePad(techBox, {
-                minWidth: 1,
-                maxWidth: 3,
+            techSignaturePad = new SignaturePad(techCanvas, {
+                minWidth: isMobile ? 1.5 : 1,
+                maxWidth: isMobile ? 4 : 3,
                 penColor: 'black',
                 backgroundColor: 'rgba(255, 255, 255, 0.1)',
                 throttle: 16, // Melhor desempenho em dispositivos móveis
                 velocityFilterWeight: 0.7 // Melhor suavização para toque
             });
             
-            clientSignaturePad = new SignaturePad(clientBox, {
-                minWidth: 1,
-                maxWidth: 3,
+            clientSignaturePad = new SignaturePad(clientCanvas, {
+                minWidth: isMobile ? 1.5 : 1,
+                maxWidth: isMobile ? 4 : 3,
                 penColor: 'black',
                 backgroundColor: 'rgba(255, 255, 255, 0.1)',
                 throttle: 16, // Melhor desempenho em dispositivos móveis
                 velocityFilterWeight: 0.7 // Melhor suavização para toque
             });
             
-            // Ajustar o tamanho inicial dos pads
-            resizeSignaturePads();
+            // Adicionar texto de orientação nas áreas de assinatura
+            addSignatureHints();
             
             // Adicionar evento de redimensionamento da janela
             if (!window.signatureResizeListenerAdded) {
@@ -131,6 +151,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 window.signatureResizeListenerAdded = true;
             }
             
+            // Adicionar eventos de toque para melhor experiência em dispositivos móveis
+            if (isMobile) {
+                document.addEventListener('touchmove', function(e) {
+                    if (e.target === techCanvas || e.target === clientCanvas) {
+                        e.preventDefault();
+                    }
+                }, { passive: false });
+            }
+            
             console.log('Pads de assinatura inicializados com sucesso');
             showNotification('Sistema pronto para uso. Áreas de assinatura ativadas.', true);
         } catch (error) {
@@ -138,6 +167,28 @@ document.addEventListener('DOMContentLoaded', function() {
             showNotification('Erro ao inicializar áreas de assinatura. Tente recarregar a página.', false);
             setTimeout(initSignaturePads, 1000); // Tentar novamente após 1 segundo
         }
+    }
+    
+    function addSignatureHints() {
+        const signatureBoxes = document.querySelectorAll('.signature-box');
+        signatureBoxes.forEach(box => {
+            // Remover dicas anteriores se existirem
+            const existingHint = box.parentNode.querySelector('.signature-hint');
+            if (existingHint) {
+                box.parentNode.removeChild(existingHint);
+            }
+            
+            // Adicionar nova dica
+            const hint = document.createElement('div');
+            hint.className = 'signature-hint';
+            hint.textContent = 'Toque e arraste para assinar';
+            hint.style.textAlign = 'center';
+            hint.style.color = '#666';
+            hint.style.fontSize = '12px';
+            hint.style.marginTop = '5px';
+            hint.style.fontStyle = 'italic';
+            box.parentNode.insertBefore(hint, box.nextSibling);
+        });
     }
     
     // Iniciar após um pequeno delay para garantir que os elementos estão carregados
@@ -160,29 +211,28 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Iniciando geração de PDF...');
         
         // Verificar se as bibliotecas necessárias estão carregadas
-        if (typeof html2canvas === 'undefined') {
-            console.error('html2canvas não está carregado. Tentando carregar...');
-            const html2canvasScript = document.createElement('script');
-            html2canvasScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
-            html2canvasScript.onload = function() {
-                console.log('html2canvas carregado com sucesso');
-                showNotification('Biblioteca carregada. Tente gerar o PDF novamente.', true);
-            };
-            document.head.appendChild(html2canvasScript);
-            showNotification('Carregando bibliotecas necessárias. Por favor, tente novamente em alguns segundos.', false);
-            return;
-        }
-        
-        if (typeof window.jspdf === 'undefined') {
-            console.error('jsPDF não está carregado. Tentando carregar...');
-            const jspdfScript = document.createElement('script');
-            jspdfScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-            jspdfScript.onload = function() {
-                console.log('jsPDF carregado com sucesso');
-                showNotification('Biblioteca carregada. Tente gerar o PDF novamente.', true);
-            };
-            document.head.appendChild(jspdfScript);
-            showNotification('Carregando bibliotecas necessárias. Por favor, tente novamente em alguns segundos.', false);
+        if (typeof html2canvas === 'undefined' || typeof window.jspdf === 'undefined') {
+            console.error('Bibliotecas necessárias não carregadas. Carregando...');
+            showNotification('Carregando bibliotecas necessárias. Por favor, aguarde...', false);
+            
+            // Carregar html2canvas se necessário
+            if (typeof html2canvas === 'undefined') {
+                const html2canvasScript = document.createElement('script');
+                html2canvasScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+                document.head.appendChild(html2canvasScript);
+            }
+            
+            // Carregar jsPDF se necessário
+            if (typeof window.jspdf === 'undefined') {
+                const jspdfScript = document.createElement('script');
+                jspdfScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+                document.head.appendChild(jspdfScript);
+            }
+            
+            // Tentar novamente após um tempo
+            setTimeout(() => {
+                showNotification('Bibliotecas carregadas. Tente gerar o PDF novamente.', true);
+            }, 2000);
             return;
         }
         
@@ -195,6 +245,32 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
+        // Verificar campos obrigatórios
+        const requiredFields = [
+            { name: 'client', label: 'Cliente' },
+            { name: 'date', label: 'Data' },
+            { name: 'orderNumber', label: 'Número do Chamado' }
+        ];
+        
+        let missingFields = [];
+        requiredFields.forEach(field => {
+            const input = document.querySelector(`input[name="${field.name}"]`);
+            if (!input || !input.value.trim()) {
+                missingFields.push(field.label);
+                input.style.border = '2px solid red';
+                setTimeout(() => {
+                    input.style.border = '';
+                }, 3000);
+            }
+        });
+        
+        if (missingFields.length > 0) {
+            showNotification(`Por favor, preencha os campos: ${missingFields.join(', ')}`, false);
+            document.querySelector(`input[name="${requiredFields[0].name}"]`).focus();
+            return;
+        }
+        
+        // Verificar assinaturas
         if (techSignaturePad.isEmpty()) {
             console.log('Assinatura do assessor não encontrada');
             showNotification('Por favor, adicione a assinatura do ASSESSOR antes de gerar o PDF.', false);
@@ -228,36 +304,6 @@ document.addEventListener('DOMContentLoaded', function() {
             loadingIndicator = document.createElement('div');
             loadingIndicator.className = 'loading-indicator';
             loadingIndicator.innerHTML = '<div class="spinner"></div><p>Gerando PDF, por favor aguarde...</p>';
-            loadingIndicator.style.position = 'fixed';
-            loadingIndicator.style.top = '0';
-            loadingIndicator.style.left = '0';
-            loadingIndicator.style.width = '100%';
-            loadingIndicator.style.height = '100%';
-            loadingIndicator.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
-            loadingIndicator.style.display = 'flex';
-            loadingIndicator.style.flexDirection = 'column';
-            loadingIndicator.style.justifyContent = 'center';
-            loadingIndicator.style.alignItems = 'center';
-            loadingIndicator.style.zIndex = '9999';
-            
-            const spinner = loadingIndicator.querySelector('.spinner');
-            if (spinner) {
-                spinner.style.width = '50px';
-                spinner.style.height = '50px';
-                spinner.style.border = '5px solid #f3f3f3';
-                spinner.style.borderTop = '5px solid #3498db';
-                spinner.style.borderRadius = '50%';
-                spinner.style.animation = 'spin 1s linear infinite';
-            }
-            
-            // Adicionar animação de rotação se ainda não existir
-            if (!document.getElementById('spinnerAnimation')) {
-                const style = document.createElement('style');
-                style.id = 'spinnerAnimation';
-                style.textContent = '@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }';
-                document.head.appendChild(style);
-            }
-            
             document.body.appendChild(loadingIndicator);
         } else {
             loadingIndicator.style.display = 'flex';
@@ -277,7 +323,13 @@ document.addEventListener('DOMContentLoaded', function() {
             const form = document.getElementById('serviceOrderForm');
 
             // Ajustar escala para dispositivos móveis
-            const scale = window.innerWidth < 768 ? 2 : 1.5; // Escala maior para dispositivos móveis
+            const isMobile = window.innerWidth < 768;
+            const scale = isMobile ? 2 : 1.5; // Escala maior para dispositivos móveis
+            
+            // Preparar o formulário para captura
+            const originalPadding = form.style.padding;
+            form.style.padding = '10px'; // Reduzir padding para melhor captura
+            
             const options = {
                 scale: scale,
                 useCORS: true,
@@ -287,7 +339,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 windowWidth: document.documentElement.offsetWidth,
                 windowHeight: document.documentElement.offsetHeight,
                 logging: false, // Desativar logs para melhor desempenho
-                backgroundColor: '#ffffff' // Garantir fundo branco
+                backgroundColor: '#ffffff', // Garantir fundo branco
+                imageTimeout: 15000, // Aumentar timeout para dispositivos mais lentos
+                onclone: function(clonedDoc) {
+                    // Ajustar elementos no clone para melhor renderização
+                    const clonedForm = clonedDoc.getElementById('serviceOrderForm');
+                    if (clonedForm) {
+                        // Remover botões e elementos desnecessários no PDF
+                        const buttons = clonedForm.querySelectorAll('.form-actions, .clear-button');
+                        buttons.forEach(button => button.style.display = 'none');
+                    }
+                }
             };
 
             // Usar html2canvas para capturar o formulário como uma imagem
@@ -295,6 +357,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log('Executando html2canvas...');
                 html2canvas(form, options).then(canvas => {
                     try {
+                        // Restaurar o padding original
+                        form.style.padding = originalPadding;
+                        
                         console.log('Canvas gerado com sucesso, criando PDF...');
                         // Adicionar a imagem do formulário ao PDF
                         const imgData = canvas.toDataURL('image/jpeg', 0.95);
@@ -393,47 +458,67 @@ document.addEventListener('DOMContentLoaded', function() {
             const techData = techSignaturePad.isEmpty() ? null : techSignaturePad.toDataURL();
             const clientData = clientSignaturePad.isEmpty() ? null : clientSignaturePad.toDataURL();
             
-            // Limpar e reinicializar os pads com os novos tamanhos
-            techSignaturePad.clear();
-            clientSignaturePad.clear();
+            // Limpar canvas existentes
+            while (techBox.firstChild) techBox.removeChild(techBox.firstChild);
+            while (clientBox.firstChild) clientBox.removeChild(clientBox.firstChild);
             
-            // Definir altura fixa para melhor experiência em todos os dispositivos
-            const fixedHeight = 150;
+            // Criar novos canvas
+            const techCanvas = document.createElement('canvas');
+            const clientCanvas = document.createElement('canvas');
+            
+            // Adicionar canvas aos contêineres
+            techBox.appendChild(techCanvas);
+            clientBox.appendChild(clientCanvas);
+            
+            // Definir altura adaptativa para dispositivos móveis
+            const isMobile = window.innerWidth < 768;
+            const fixedHeight = isMobile ? 180 : 150;
             
             // Definir largura com base no tamanho do contêiner
             const techWidth = techBox.offsetWidth || techBox.clientWidth || 300;
             const clientWidth = clientBox.offsetWidth || clientBox.clientWidth || 300;
             
-            // Aplicar dimensões ao canvas
-            techBox.width = techWidth;
-            techBox.height = fixedHeight;
-            clientBox.width = clientWidth;
-            clientBox.height = fixedHeight;
+            // Aplicar dimensões ao canvas com ajuste para dispositivos de alta resolução
+            const ratio = Math.max(window.devicePixelRatio || 1, 1);
+            techCanvas.width = techWidth * ratio;
+            techCanvas.height = fixedHeight * ratio;
+            clientCanvas.width = clientWidth * ratio;
+            clientCanvas.height = fixedHeight * ratio;
             
             // Aplicar estilos CSS para garantir que o canvas seja visível
-            techBox.style.width = '100%';
-            techBox.style.height = fixedHeight + 'px';
-            clientBox.style.width = '100%';
-            clientBox.style.height = fixedHeight + 'px';
-            
-            // Definir dimensões do canvas para o SignaturePad
-            techSignaturePad.canvas.width = techWidth;
-            techSignaturePad.canvas.height = fixedHeight;
-            clientSignaturePad.canvas.width = clientWidth;
-            clientSignaturePad.canvas.height = fixedHeight;
+            techCanvas.style.width = '100%';
+            techCanvas.style.height = fixedHeight + 'px';
+            clientCanvas.style.width = '100%';
+            clientCanvas.style.height = fixedHeight + 'px';
             
             // Ajustar a escala do canvas para dispositivos de alta resolução
-            const ratio = Math.max(window.devicePixelRatio || 1, 1);
-            const techCtx = techSignaturePad.canvas.getContext("2d");
-            const clientCtx = clientSignaturePad.canvas.getContext("2d");
+            const techCtx = techCanvas.getContext('2d');
+            const clientCtx = clientCanvas.getContext('2d');
             
-            // Limpar transformações anteriores
+            // Limpar transformações anteriores e aplicar nova escala
             techCtx.setTransform(1, 0, 0, 1, 0, 0);
             clientCtx.setTransform(1, 0, 0, 1, 0, 0);
-            
-            // Aplicar nova escala
             techCtx.scale(ratio, ratio);
             clientCtx.scale(ratio, ratio);
+            
+            // Reinicializar os pads de assinatura
+            techSignaturePad = new SignaturePad(techCanvas, {
+                minWidth: isMobile ? 1.5 : 1,
+                maxWidth: isMobile ? 4 : 3,
+                penColor: 'black',
+                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                throttle: 16,
+                velocityFilterWeight: 0.7
+            });
+            
+            clientSignaturePad = new SignaturePad(clientCanvas, {
+                minWidth: isMobile ? 1.5 : 1,
+                maxWidth: isMobile ? 4 : 3,
+                penColor: 'black',
+                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                throttle: 16,
+                velocityFilterWeight: 0.7
+            });
             
             // Restaurar assinaturas se existiam
             if (techData) {
@@ -444,26 +529,24 @@ document.addEventListener('DOMContentLoaded', function() {
                 clientSignaturePad.fromDataURL(clientData);
             }
             
-            // Adicionar indicação visual para as áreas de assinatura
-            const signatureBoxes = document.querySelectorAll('.signature-box');
-            signatureBoxes.forEach(box => {
-                if (box.getAttribute('data-hint-added') !== 'true') {
-                    const hint = document.createElement('div');
-                    hint.className = 'signature-hint';
-                    hint.textContent = 'Toque e arraste para assinar';
-                    hint.style.textAlign = 'center';
-                    hint.style.color = '#999';
-                    hint.style.fontSize = '12px';
-                    hint.style.marginTop = '5px';
-                    box.parentNode.insertBefore(hint, box.nextSibling);
-                    box.setAttribute('data-hint-added', 'true');
-                }
-            });
+            // Atualizar dicas visuais
+            addSignatureHints();
+            
+            // Adicionar eventos de toque para melhor experiência em dispositivos móveis
+            if (isMobile) {
+                document.addEventListener('touchmove', function(e) {
+                    if (e.target === techCanvas || e.target === clientCanvas) {
+                        e.preventDefault();
+                    }
+                }, { passive: false });
+            }
             
             console.log('Pads de assinatura redimensionados com sucesso');
         } catch (error) {
             console.error('Erro ao redimensionar pads de assinatura:', error);
             showNotification('Erro ao configurar áreas de assinatura. Tente recarregar a página.', false);
+            // Tentar inicializar novamente após erro
+            setTimeout(initSignaturePads, 1000);
         }
     }
 
