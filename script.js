@@ -482,8 +482,8 @@ document.addEventListener('DOMContentLoaded', function() {
         allowTaint: true,
         scrollX: 0,
         scrollY: 0,
-        windowWidth: element.scrollWidth
-        // windowHeight: element.scrollHeight // Removido para permitir que html2canvas determine a altura
+        windowWidth: element.scrollWidth,
+        windowHeight: element.scrollHeight // Garantir altura total do formulário
     }).then(canvas => {
         const imgData = canvas.toDataURL('image/png');
         const pdf = new jsPDF('p', 'mm', 'a4');
@@ -492,7 +492,18 @@ document.addEventListener('DOMContentLoaded', function() {
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
         
-        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        // Se a imagem for maior que uma página, dividir em múltiplas páginas
+        let position = 0;
+        let pageHeight = pdf.internal.pageSize.getHeight();
+        if (pdfHeight < pageHeight) {
+            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        } else {
+            while (position < pdfHeight) {
+                pdf.addImage(imgData, 'PNG', 0, -position, pdfWidth, pdfHeight);
+                position += pageHeight;
+                if (position < pdfHeight) pdf.addPage();
+            }
+        }
         pdf.save('formulario.pdf');
     });
 }

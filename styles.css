@@ -752,3 +752,8 @@ input:focus, textarea:focus, button:focus {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
+.checklist label, .checklist input[type="checkbox"] {
+    font-size: 1em !important;
+    line-height: 1.5em;
+    vertical-align: middle;
+}
